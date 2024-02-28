@@ -1,21 +1,23 @@
 package com.rewe.kafka.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-@Component
+@Service
+@Slf4j
+
 public class EmailProducer {
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public EmailProducer(KafkaTemplate<String, String> kafkaTemplate) {
+    public EmailProducer(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
-        send("my-topic", "yahoo","Teest3");
-        send("my-topic", "gmail","Test1");
+        send("my-topic", "yahoo", "T X");
+        send("my-topic", "gmail", "TeSSxi XEX");
     }
 
-    public void send(String topic, String key, String data) {
-        System.out.printf(" send the message to kafka ");
+    public void send(String topic, String key, Object data) {
+        log.debug("send to kafka, topic:{}, key:{}", topic, key); //for security reason we should not log the data
         kafkaTemplate.send(topic, key, data);
     }
 

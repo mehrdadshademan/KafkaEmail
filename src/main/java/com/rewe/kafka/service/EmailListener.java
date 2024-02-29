@@ -3,16 +3,25 @@ package com.rewe.kafka.service;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rewe.kafka.domain.EmailModel;
+import com.rewe.kafka.exceptions.EmailRandomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.io.DataInput;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,29 +31,42 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @RequiredArgsConstructor
 public class EmailListener {
-    @Value("${Kafka.topic}")
-    private String topic;
+
 
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ConsumerFactory<String, Object> consumerFactory;
 
     private final ConcurrentHashMap<LocalDateTime, EmailModel> emailList = new ConcurrentHashMap<LocalDateTime, EmailModel>();
 
 
-    @KafkaListener(topics = "my-topic", groupId = "my-group", containerFactory = "kafkaListenerContainerFactory")
-    public void consume(ConsumerRecord<String, Object> data) {
+    @KafkaListener(topics = KafkaConstants.KAFKA_TOPIC, groupId = KafkaConstants.KAFKA_GROUP_ID, containerFactory = "kafkaListenerContainerFactory")
+    public void consume(EmailModel data) {
         try {
-            EmailModel email = objectMapper.readValue((JsonParser) data.value(), EmailModel.class);
+            EmailModel email = data;
             emailList.put(LocalDateTime.now(), email);
-            //java jpa repo
-            System.out.println("XXX : Email");
+            log.debug("the Email listened and put into the local cach");
         } catch (Exception e) {
-            System.out.println("XXX : recive more thing ");
-            System.out.println(data);
+            log.error("The listener has error, error message:{}", e.getMessage());
+        }
+    }
+
+    public void getConsumeByTopic(String topic, int duration) {
+//        try (Consumer<String, GenericRecord> consumer = new KafkaConsumer<>(consumerFactoryConfig);) {
+//todo fix this
+        try (Consumer<String, Object> consumer = consumerFactory.createConsumer()) {
+            consumer.subscribe(Collections.singletonList(topic));
+            ConsumerRecords<String, Object> records = consumer.poll(Duration.ofMillis(duration));
+            if (records != null && !records.isEmpty()) {
+                for (ConsumerRecord<String, Object> record : records) {
+                    Object value = record.value();
+                    System.out.println("Received: " + value);
+                }
+            }
+        } catch (Exception ex) {
+            log.error("Can not consume topic:{} for duration:{} ", topic, duration);
+            throw new EmailRandomException("Can not consume topic: " + topic + " for duration:" + duration);
         }
     }
 

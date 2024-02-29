@@ -1,6 +1,9 @@
 package com.rewe.kafka.domain;
 
 import lombok.Data;
+import org.apache.avro.Schema;
+import org.apache.avro.specific.SpecificRecord;
+import org.apache.avro.specific.SpecificRecordBase;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -14,4 +17,6 @@ public class EmailModel implements Serializable {
     private String sender ;
     private List<String> recipients ;
     private LocalDateTime sendDate;
+
+
 }

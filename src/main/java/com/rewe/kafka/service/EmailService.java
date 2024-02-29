@@ -33,7 +33,7 @@ public class EmailService {
 
     private final EmailProducer emailProducer;
     private final EmailListener emailListener;
-   // private final EmailRepository emailRepository;
+    // private final EmailRepository emailRepository;
 
     public List<EmailModel> consumeEmailsEveryDay() {
         log.debug("consume all of emails");
@@ -60,7 +60,9 @@ public class EmailService {
             randomEmail.setSender(createRandomEmail(randomDomain));
             randomEmail.setRecipients(receiverList);
             emailProducer.send(topic, randomDomain, randomEmail);
-           // emailRepository.save(randomEmail);
+            emailListener.getConsumeByTopic(KafkaConstants.KAFKA_TOPIC, 6000);
+
+            // emailRepository.save(randomEmail);
             log.debug("the email send to broker");
             return randomEmail;
         } catch (Exception e) {

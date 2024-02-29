@@ -27,7 +27,7 @@ public class EmailController {
     }
 
     @GetMapping("/consume")
-    public ResponseEntity<List<EmailModel>> consumeEmail(@PathVariable String topic) {
+    public ResponseEntity<List<EmailModel>> consumeEmail() {
         return new ResponseEntity<>(emailService.consumeEmailsEveryDay(), HttpStatus.OK);
     }
     @GetMapping("/consume/byTimeRange")

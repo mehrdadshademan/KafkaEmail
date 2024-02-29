@@ -1,141 +1,117 @@
 package com.rewe.kafka;
 
-import com.rewe.kafka.service.EmailListener;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
+import com.rewe.kafka.domain.EmailModel;
+import com.rewe.kafka.exceptions.EmailRandomInvalidInputException;
+import com.rewe.kafka.repository.EmailRepository;
+import com.rewe.kafka.service.EmailService;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.annotation.DirtiesContext;
-import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.Duration;
-import java.util.Collections;
-import java.util.Properties;
-
-
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
+import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 
-@SpringBootTest(classes = TestApplication.class)
-@EmbeddedKafka(partitions = 3, topics = "my-topic" )
-@TestPropertySource(
-        properties = {
-                "spring.kafka.consumer.auto-offset-reset=earliest",
-                "spring.kafka.consumer.group-id=my-group"
-//                "spring.datasource.url=jdbc:tc:mysql:8.0.32:///db",
-        }
-)
-@Testcontainers
-class KafkaListenerTest {
-
-    @Container
-    static final KafkaContainer kafka = new KafkaContainer(
-            DockerImageName.parse("confluentinc/cp-kafka:7.3.3")
-    ).withEnv("KAFKA_NUM_PARTITIONS", "3");
-
-    @DynamicPropertySource
-    static void overrideProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
-    }
-
+@SpringBootTest
+@RunWith(SpringRunner.class)
+@DirtiesContext
+@EmbeddedKafka(partitions = 3, brokerProperties = {"listeners=PLAINTEXT://localhost:55859", "port=55859"})
+ class KafkaListenerTest {
 
     @Autowired
-    private KafkaTemplate<String, String> kafkaTemplate;
-
-
-    @Autowired
-    private ConcurrentKafkaListenerContainerFactory<String , String> kafkaListenerContainerFactory;
-
+    private KafkaTemplate<String, Object> kafkaTemplate;
 
     @Autowired
-    private EmailListener emailListener;
+    private EmailService service;
 
-    @Value("${Kafka.topic}")
-    private String topic;
+    @Autowired
+    EmailRepository repository;
+
 
     @BeforeEach
-    public  void setup(){
+    public void setup() {
         MockitoAnnotations.initMocks(this);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"gmail", "yahoo", "rewe", "at"})
+    void should_Success_When_PartitionNumberIsAccordingToKey(String key) throws ExecutionException, InterruptedException {
+        String topic = "my-topic";
+        String message = "mehrdad sendTEST message";
+        CompletableFuture<SendResult<String, Object>> result = kafkaTemplate.send(topic, key, message);
+        SendResult<String, Object> expectedResult = result.get();
+        ProducerRecord<String, Object> producerRecord = expectedResult.getProducerRecord();
+        switch (key) {
+            case "gmail": {
+                Assertions.assertEquals(0, expectedResult.getRecordMetadata().partition());
+                break;
+            }
+            case "yahoo": {
+                Assertions.assertEquals(1, expectedResult.getRecordMetadata().partition());
+                break;
+            }
+            case "rewe": {
+                Assertions.assertEquals(2, expectedResult.getRecordMetadata().partition());
+                break;
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void should_ThrowEmailRandomInvalidInputException_When_TopicInputIsWrong(String topic) {
+        Assertions.assertThrows(EmailRandomInvalidInputException.class, () -> service.autoGenerateAndSendEmail(topic));
+    }
 
 
     @Test
-    void shouldHandleProductPriceChangedEvent() throws ExecutionException, InterruptedException {
-
+     void should_SuccessAndGenerateEmail_When_TopicInputIsRight() {
         String topic = "my-topic";
-        String key = "yahoo";
-        String message = "mehrdad sendTEST";
-        CompletableFuture<SendResult<String, String>> result = kafkaTemplate.send(topic, key, message);
-        SendResult<String, String> expectedResult = result.get();
-        ProducerRecord<String, String> producerRecord = expectedResult.getProducerRecord();
-
-//
-//        Properties consumerProps = new Properties();
-//        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
-//        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "my-group");
-//        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-//        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-//
-//        // Create a Kafka consumer
-//        try (Consumer<String, String> consumer = new KafkaConsumer<>(consumerProps)) {
-//            // Subscribe to the topic
-//            consumer.subscribe(Collections.singletonList("my-topic"));
-//
-//            // Send a message to each partition
-//            for (int i = 0; i < 3; i++) {
-//                kafkaTemplate.send("my-topic", String.valueOf(i), "mehrdad SDAASdsend");
-//            }
-//
-//            // Consume messages from all partitions
-//            ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(50));
-//
-//            // Assert that messages were received from all three partitions
-//            assertEquals(3, records.count());
-//        }
-
-
+        EmailModel expectEmail = new EmailModel();
+        expectEmail.setTopic(topic);
+        EmailModel emailModel = service.autoGenerateAndSendEmail(topic);
+        Assertions.assertNotNull(emailModel);
+        Assertions.assertEquals(expectEmail.getTopic(), emailModel.getTopic());
     }
 
-    /// yeki yahoo , gmail , rev baraye partition
-    //test object hamono begirm
+    @Test
+     void should_Success_When_SendCorrectEmailToKafkaAndConsumeIt() throws ExecutionException, InterruptedException {
+        EmailModel emailModel = new EmailModel();
+        String domain="gmail";
+        emailModel.setSender("Tester@" + domain + ".com");
+        emailModel.setTopic("Testing Kafka ");
+        emailModel.setContent("content if from " + domain);
+        emailModel.setRecipients("Test.Mehrdad@gmail.com");
+        kafkaTemplate.send("my-topic", domain, (emailModel));
+        await()
+                .pollInterval(Duration.ofSeconds(2))
+                .atMost(Duration.ofMinutes(1))
+                .untilAsserted(() -> {
+                    List<EmailModel> allEmails = repository.findAll();
+                    assertEquals(1, allEmails.size());
+                    EmailModel consumedEmail = allEmails.getLast();
+                    assertEquals(emailModel.getSender(), consumedEmail.getSender());
+                    assertEquals(emailModel.getTopic(), consumedEmail.getTopic());
+                });
+    }
+
 
 }

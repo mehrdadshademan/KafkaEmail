@@ -1,7 +1,7 @@
 package com.rewe.kafka.service;
 
-import com.rewe.kafka.enums.EmailDomainEnum;
 import com.rewe.kafka.domain.EmailModel;
+import com.rewe.kafka.enums.EmailDomainEnum;
 import com.rewe.kafka.exceptions.EmailRandomException;
 import com.rewe.kafka.exceptions.EmailRandomInvalidInputException;
 import com.rewe.kafka.repository.EmailRepository;
@@ -12,10 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
+
 
 @Service
 @Slf4j
@@ -23,53 +23,55 @@ import java.util.Set;
 public class EmailService {
 
     private final ULID ulid = new ULID();
-    static final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
+    static final String CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
 
     @Value("${email.content.length}")
     private int contentLength;
 
     @Value("${email.receiver}")
-    private List<String> receiverList;
+    private String receiverList;
 
     private final EmailProducer emailProducer;
-    private final EmailListener emailListener;
-    // private final EmailRepository emailRepository;
-
-    public List<EmailModel> consumeEmailsEveryDay() {
-        log.debug("consume all of emails");
-        return emailListener.getAllConsumeEmails();
+    private final EmailRepository emailRepository;
+    public List<EmailModel> retrievedConsumedEmail(String topic) {
+        log.debug("Show the consumed emails");
+        List<EmailModel> allByTopicAndLogStatus = new ArrayList<>();
+        try {
+            topicInputValidation(topic);
+            allByTopicAndLogStatus = emailRepository.findAllByTopic(topic);
+            return allByTopicAndLogStatus;
+        } catch (Exception ex) {
+            log.error("Can not retrieved data for topic:{}", topic);
+            throw new EmailRandomException("Can not retrieved data for topic" + topic);
+        }
     }
 
-    public Set<EmailModel> consumeEmailsByRange(LocalDateTime startRange, LocalDateTime endRange) {
-        log.debug("consume email by range of start:{} , end:{}", startRange, endRange);
-        //todo validation for range
-        return emailListener.getEmailsInTimeRange(startRange, endRange);
-    }
-
-
-    public EmailModel autoGenerateAndSendEmail(String topic) {
+    private void topicInputValidation(String topic) {
         if (!isValidTopic(topic)) {
             log.error("The topic is not valid as input, topic:{}", topic);
             throw new EmailRandomInvalidInputException("The topic is not valid as input, It is null or empty");
         }
+    }
+
+    public EmailModel autoGenerateAndSendEmail(String topic) {
+        topicInputValidation(topic);
         try {
-            String randomDomain = createRandomDomain();
+            Random random = new Random();
+            String randomDomain = createRandomDomain(random);
             EmailModel randomEmail = new EmailModel();
             randomEmail.setTopic(topic);
-            randomEmail.setContent(createRandomContent(contentLength));
+            randomEmail.setContent(createRandomContent(contentLength,random));
             randomEmail.setSender(createRandomEmail(randomDomain));
             randomEmail.setRecipients(receiverList);
-            emailProducer.send(topic, randomDomain, randomEmail);
-            emailListener.getConsumeByTopic(KafkaConstants.KAFKA_TOPIC, 6000);
-
-            // emailRepository.save(randomEmail);
-            log.debug("the email send to broker");
+            emailProducer.send(randomDomain, randomEmail);
+            log.debug("The email:{}  with topic:{} and key:{} sent to broker", randomEmail, topic, randomDomain);
             return randomEmail;
         } catch (Exception e) {
             log.error("Can not create random email and send to topic:{}, error message:{}", topic, e.getMessage());
             throw new EmailRandomException("Can not create random email and send to topic:" + topic);
         }
     }
+
 
     private boolean isValidTopic(String topic) {
         return !StringUtils.isBlank(topic);
@@ -81,19 +83,18 @@ public class EmailService {
      * @param lengthContent length of content
      * @return random content
      */
-    private String createRandomContent(int lengthContent) {
-        Random random = new Random();
+    private String createRandomContent(int lengthContent,Random random) {
         StringBuilder content = new StringBuilder();
         for (int i = 0; i < lengthContent; i++) {
-            int index = random.nextInt(chars.length());
-            content.append(chars.charAt(index));
+            int index = random.nextInt(CHARS.length());
+            content.append(CHARS.charAt(index));
         }
         return content.toString();
     }
 
-    private String createRandomDomain() {
+    private String createRandomDomain(Random random) {
         EmailDomainEnum[] domains = EmailDomainEnum.values();
-        return domains[new Random().nextInt(domains.length)].getDomain();
+        return domains[random.nextInt(domains.length)].getDomain();
     }
 
     private String createRandomEmail(String domain) {

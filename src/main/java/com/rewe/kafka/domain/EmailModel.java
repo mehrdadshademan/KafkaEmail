@@ -1,22 +1,19 @@
 package com.rewe.kafka.domain;
 
+import jakarta.persistence.*;
 import lombok.Data;
-import org.apache.avro.Schema;
-import org.apache.avro.specific.SpecificRecord;
-import org.apache.avro.specific.SpecificRecordBase;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
+@Entity
 public class EmailModel implements Serializable {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String topic;
     private String content;
-    private String sender ;
-    private List<String> recipients ;
-    private LocalDateTime sendDate;
-
-
+    private String sender;
+    @Lob
+    private String recipients;
 }

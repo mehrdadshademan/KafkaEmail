@@ -1,6 +1,5 @@
 package com.rewe.kafka.config;
 
-import com.rewe.kafka.service.KafkaConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -30,16 +29,22 @@ public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
+    @Value("${spring.kafka.consumer.group-id}")
+    private String groupId;
+
     @Value("${Kafka.topic.partition}")
     private int partition;
 
     @Value("${Kafka.concurrent.listener}")
     private int concurrentFactory;
 
+    @Value("${Kafka.topic}")
+    private String topic;
+
 
     @Bean
     public NewTopic celciusTopic() {
-        return TopicBuilder.name(KafkaConstants.KAFKA_TOPIC)
+        return TopicBuilder.name(topic)
                 .partitions(partition)
                 .build();
     }
@@ -50,7 +55,7 @@ public class KafkaConfig {
     public Map<String, Object> consumerFactoryConfig() {
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, KafkaConstants.KAFKA_GROUP_ID);
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.LATEST.toString());
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         config.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
@@ -60,11 +65,7 @@ public class KafkaConfig {
         config.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 500);
         config.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 300000);
         log.info("Kafka listener container factory configuration: {}", config);
-//        config.put("auto.offset.reset", "earliest");
-//        config.put(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
-//        config.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://schema_registery_url:port");
-//        config.put(KafkaAvroDeserializerConfig.AUTO_REGISTER_SCHEMAS, false);
-//        config.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
+
         return (config);
     }
 
@@ -75,6 +76,7 @@ public class KafkaConfig {
 
     /**
      * create consumer container factory
+     *
      * @return Concurrent Kafka Listener Container Factory
      */
     @Bean
@@ -104,7 +106,7 @@ public class KafkaConfig {
     }
 
     /**
-     *  create kafka Template with configured producer factory
+     * create kafka Template with configured producer factory
      */
     @Bean
     public KafkaTemplate<String, Object> kafkaTemplate() {

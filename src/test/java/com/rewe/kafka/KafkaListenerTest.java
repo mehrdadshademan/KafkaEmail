@@ -1,6 +1,7 @@
 package com.rewe.kafka;
 
 import com.rewe.kafka.domain.EmailModel;
+import com.rewe.kafka.dto.EmailResponseDto;
 import com.rewe.kafka.exceptions.EmailRandomInvalidInputException;
 import com.rewe.kafka.repository.EmailRepository;
 import com.rewe.kafka.service.EmailService;
@@ -24,6 +25,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
@@ -93,7 +95,7 @@ class KafkaListenerTest {
         String topic = "my-topic";
         EmailModel expectEmail = new EmailModel();
         expectEmail.setTopic(topic);
-        EmailModel emailModel = service.autoGenerateAndSendEmail(topic);
+        EmailResponseDto emailModel = service.autoGenerateAndSendEmail(topic);
         Assertions.assertNotNull(emailModel);
         Assertions.assertEquals(expectEmail.getTopic(), emailModel.getTopic());
     }
@@ -107,7 +109,7 @@ class KafkaListenerTest {
         emailModel.setContent("content if from " + domain);
         emailModel.setRecipients("Test.Mehrdad@gmail.com");
         int countMessage=0;
-        while (countMessage<20) {
+         while (countMessage<20) {
             kafkaTemplate.send("my-topic", emailModel);
             countMessage++;
         }

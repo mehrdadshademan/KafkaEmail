@@ -1,6 +1,7 @@
 package com.rewe.kafka.web.rest.controller;
 
 import com.rewe.kafka.domain.EmailModel;
+import com.rewe.kafka.dto.EmailResponseDto;
 import com.rewe.kafka.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,7 @@ public class EmailController {
     private final EmailService emailService;
 
     @PostMapping("/generate-email/{topic}")
-    public ResponseEntity<EmailModel> generateEmail(@PathVariable String topic) {
+    public ResponseEntity<EmailResponseDto> generateEmail(@PathVariable String topic) {
         return new ResponseEntity<>(emailService.autoGenerateAndSendEmail(topic), HttpStatus.OK);
     }
 

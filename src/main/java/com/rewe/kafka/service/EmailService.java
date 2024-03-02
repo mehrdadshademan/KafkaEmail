@@ -1,9 +1,11 @@
 package com.rewe.kafka.service;
 
 import com.rewe.kafka.domain.EmailModel;
+import com.rewe.kafka.dto.EmailResponseDto;
 import com.rewe.kafka.enums.EmailDomainEnum;
 import com.rewe.kafka.exceptions.EmailRandomException;
 import com.rewe.kafka.exceptions.EmailRandomInvalidInputException;
+import com.rewe.kafka.mapper.EmailMapper;
 import com.rewe.kafka.repository.EmailRepository;
 import de.huxhorn.sulky.ulid.ULID;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.util.Random;
 @RequiredArgsConstructor
 public class EmailService {
 
+    private  final EmailMapper mapper;
     private final ULID ulid = new ULID();
     static final String CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
 
@@ -51,7 +54,13 @@ public class EmailService {
         }
     }
 
-    public EmailModel autoGenerateAndSendEmail(String topic) {
+    /**
+     * Generate random email with random content and send to the Kafka
+     *
+     * @param topic topic of email
+     * @return return email random dto to show to user
+     */
+    public EmailResponseDto autoGenerateAndSendEmail(String topic) {
         topicInputValidation(topic);
         try {
             Random random = new Random();
@@ -63,14 +72,18 @@ public class EmailService {
             randomEmail.setRecipients(receiverList);
             emailProducer.sendEmail(randomEmail);
             log.debug("The email:{}  with topic:{} and key:{} sent to broker", randomEmail, topic, randomDomain);
-            return randomEmail;
-        } catch (Exception e) {
+            return mapper.toDto(randomEmail);
+         } catch (Exception e) {
             log.error("Can not create random email and send to topic:{}, error message:{}", topic, e.getMessage());
             throw new EmailRandomException("Can not create random email and send to topic:" + topic);
         }
     }
 
-
+    /**
+     * check validation of topic not null or empty
+     * @param topic topic
+     * @return the topic is valid or not
+     */
     private boolean isValidTopic(String topic) {
         return !StringUtils.isBlank(topic);
     }
@@ -90,11 +103,21 @@ public class EmailService {
         return content.toString();
     }
 
+    /**
+     * Create random content
+     * @param random random object
+     * @return random domain between domain enum
+     */
     private String createRandomDomain(Random random) {
         EmailDomainEnum[] domains = EmailDomainEnum.values();
         return domains[random.nextInt(domains.length)].getDomain();
     }
 
+    /**
+     *  Create random email address
+     * @param domain domain of email like gmail/yahoo
+     * @return random email
+     */
     private String createRandomEmail(String domain) {
         return "Email_Random" + ulid.nextULID() + "@" + domain;
     }

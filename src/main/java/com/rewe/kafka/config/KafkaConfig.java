@@ -32,13 +32,13 @@ public class KafkaConfig {
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
-    @Value("${Kafka.topic.partition}")
+    @Value("${kafka.topic.partition}")
     private int partition;
 
-    @Value("${Kafka.concurrent.listener}")
+    @Value("${kafka.concurrent.listener}")
     private int concurrentFactory;
 
-    @Value("${Kafka.topic}")
+    @Value("${kafka.topic}")
     private String topic;
 
 
@@ -56,7 +56,7 @@ public class KafkaConfig {
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.LATEST.toString());
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"latest");
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         config.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class.getName());

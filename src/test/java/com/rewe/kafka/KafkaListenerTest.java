@@ -34,13 +34,14 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 @RunWith(SpringRunner.class)
 @DirtiesContext
 @EmbeddedKafka(partitions = 3, brokerProperties = {"listeners=PLAINTEXT://localhost:55859", "port=55859"})
- class KafkaListenerTest {
+class KafkaListenerTest {
 
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
 
     @Autowired
     private EmailService service;
+
 
     @Autowired
     EmailRepository repository;
@@ -54,9 +55,13 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
     @ParameterizedTest
     @ValueSource(strings = {"gmail", "yahoo", "rewe", "at"})
     void should_Success_When_PartitionNumberIsAccordingToKey(String key) throws ExecutionException, InterruptedException {
+        EmailModel emailRequest = new EmailModel();
         String topic = "my-topic";
-        String message = "mehrdad sendTEST message";
-        CompletableFuture<SendResult<String, Object>> result = kafkaTemplate.send(topic, key, message);
+        emailRequest.setSender("test@" + key + ".com");
+        emailRequest.setTopic("email-topic");
+        emailRequest.setContent("messages mail");
+
+        CompletableFuture<SendResult<String, Object>> result = kafkaTemplate.send(topic, emailRequest);
         SendResult<String, Object> expectedResult = result.get();
         ProducerRecord<String, Object> producerRecord = expectedResult.getProducerRecord();
         switch (key) {
@@ -83,7 +88,7 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 
     @Test
-     void should_SuccessAndGenerateEmail_When_TopicInputIsRight() {
+    void should_SuccessAndGenerateEmail_When_TopicInputIsRight() {
         String topic = "my-topic";
         EmailModel expectEmail = new EmailModel();
         expectEmail.setTopic(topic);
@@ -93,21 +98,25 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
     }
 
     @Test
-     void should_Success_When_SendCorrectEmailToKafkaAndConsumeIt() throws ExecutionException, InterruptedException {
+    void should_Success_When_SendCorrectEmailToKafkaAndConsumeIt() throws ExecutionException, InterruptedException {
         EmailModel emailModel = new EmailModel();
-        String domain="gmail";
+        String domain = "gmail";
         emailModel.setSender("Tester@" + domain + ".com");
         emailModel.setTopic("Testing Kafka ");
         emailModel.setContent("content if from " + domain);
         emailModel.setRecipients("Test.Mehrdad@gmail.com");
-        kafkaTemplate.send("my-topic", domain, (emailModel));
+        int countMessage=0;
+        while (countMessage<20) {
+            kafkaTemplate.send("my-topic", emailModel);
+            countMessage++;
+        }
         await()
                 .pollInterval(Duration.ofSeconds(2))
-                .atMost(Duration.ofMinutes(1))
+                .atMost(Duration.ofMinutes(3))
                 .untilAsserted(() -> {
                     List<EmailModel> allEmails = repository.findAll();
                     assertEquals(1, allEmails.size());
-                    EmailModel consumedEmail = allEmails.getLast();
+                    EmailModel consumedEmail = allEmails.get(allEmails.size()-1);
                     assertEquals(emailModel.getSender(), consumedEmail.getSender());
                     assertEquals(emailModel.getTopic(), consumedEmail.getTopic());
                 });

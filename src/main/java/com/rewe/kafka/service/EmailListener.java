@@ -18,7 +18,7 @@ public class EmailListener {
 
     private final EmailRepository repository;
 
-    @KafkaListener(topics =  "${Kafka.topic}", groupId =  "${spring.kafka.consumer.group-id}", containerFactory = "kafkaListenerContainerFactory",concurrency ="${Kafka.concurrent.listener}")
+    @KafkaListener(topics =  "${kafka.topic}", groupId =  "${spring.kafka.consumer.group-id}", containerFactory = "kafkaListenerContainerFactory",concurrency ="${kafka.concurrent.listener}")
     public void consume(List<EmailModel> emailModelList) {
         try {
             // Asynchronously save the list of emails to the database

@@ -39,21 +39,16 @@ services:
       KAFKA_CLUSTERS_0_NAME: oxygen-0
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
 
-#  schema-registry:
-#    image: bitnami/schema-registry:7.4.0
-#    hostname: schema-registry
-#    container_name: schema-registry
-#    depends_on:
-#      - zookeeper
-#      - kafka
-#    ports:
-#      - "8090:8090"
-#    networks:
-#      - kafka-net
-#    environment:
-#      - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8090
-#      - SCHEMA_REGISTRY_KAFKA_BROKERS=PLAINTEXT://kafka:9093
-
+  test-application-kafka:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - kafka
+    ports:
+      - "8090:8090"
+    networks:
+      - kafka-net
 networks:
   kafka-net:
     driver: bridge

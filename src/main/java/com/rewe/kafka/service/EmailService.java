@@ -6,13 +6,12 @@ import com.rewe.kafka.exceptions.EmailRandomException;
 import com.rewe.kafka.exceptions.EmailRandomInvalidInputException;
 import com.rewe.kafka.repository.EmailRepository;
 import de.huxhorn.sulky.ulid.ULID;
-import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -33,13 +32,12 @@ public class EmailService {
 
     private final EmailProducer emailProducer;
     private final EmailRepository emailRepository;
+
     public List<EmailModel> retrievedConsumedEmail(String topic) {
         log.debug("Show the consumed emails");
-        List<EmailModel> allByTopicAndLogStatus = new ArrayList<>();
         try {
             topicInputValidation(topic);
-            allByTopicAndLogStatus = emailRepository.findAllByTopic(topic);
-            return allByTopicAndLogStatus;
+            return emailRepository.findAllByTopic(topic);
         } catch (Exception ex) {
             log.error("Can not retrieved data for topic:{}", topic);
             throw new EmailRandomException("Can not retrieved data for topic" + topic);
@@ -60,10 +58,10 @@ public class EmailService {
             String randomDomain = createRandomDomain(random);
             EmailModel randomEmail = new EmailModel();
             randomEmail.setTopic(topic);
-            randomEmail.setContent(createRandomContent(contentLength,random));
+            randomEmail.setContent(createRandomContent(contentLength, random));
             randomEmail.setSender(createRandomEmail(randomDomain));
             randomEmail.setRecipients(receiverList);
-            emailProducer.send(randomDomain, randomEmail);
+            emailProducer.sendEmail(randomEmail);
             log.debug("The email:{}  with topic:{} and key:{} sent to broker", randomEmail, topic, randomDomain);
             return randomEmail;
         } catch (Exception e) {
@@ -83,7 +81,7 @@ public class EmailService {
      * @param lengthContent length of content
      * @return random content
      */
-    private String createRandomContent(int lengthContent,Random random) {
+    private String createRandomContent(int lengthContent, Random random) {
         StringBuilder content = new StringBuilder();
         for (int i = 0; i < lengthContent; i++) {
             int index = random.nextInt(CHARS.length());

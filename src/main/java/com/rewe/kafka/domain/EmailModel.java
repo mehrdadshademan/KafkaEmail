@@ -2,8 +2,6 @@ package com.rewe.kafka.domain;
 
 import jakarta.persistence.*;
 import lombok.Data;
-
-//import javax.persistence.*;
 import java.io.Serializable;
 
 @Data

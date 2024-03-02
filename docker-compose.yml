@@ -39,14 +39,14 @@ services:
       KAFKA_CLUSTERS_0_NAME: oxygen-0
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
 
-  test-application-kafka:
+  email-application-kafka:
     build:
       context: .
       dockerfile: Dockerfile
     depends_on:
       - kafka
     ports:
-      - "8090:8090"
+      - 8090:8090
     networks:
       - kafka-net
 networks:

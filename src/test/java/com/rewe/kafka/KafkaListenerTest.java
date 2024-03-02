@@ -5,15 +5,12 @@ import com.rewe.kafka.dto.EmailResponseDto;
 import com.rewe.kafka.exceptions.EmailRandomInvalidInputException;
 import com.rewe.kafka.repository.EmailRepository;
 import com.rewe.kafka.service.EmailService;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.runner.RunWith;
-import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -25,7 +22,6 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
@@ -50,11 +46,6 @@ class KafkaListenerTest {
     EmailRepository repository;
 
 
-    @BeforeEach
-    public void setup() {
-        MockitoAnnotations.initMocks(this);
-    }
-
     @ParameterizedTest
     @ValueSource(strings = {"gmail", "yahoo", "rewe", "at"})
     void should_Success_When_PartitionNumberIsAccordingToKey(String key) throws ExecutionException, InterruptedException {
@@ -66,7 +57,6 @@ class KafkaListenerTest {
 
         CompletableFuture<SendResult<String, Object>> result = kafkaTemplate.send(topic, emailRequest);
         SendResult<String, Object> expectedResult = result.get();
-        ProducerRecord<String, Object> producerRecord = expectedResult.getProducerRecord();
         switch (key) {
             case "gmail": {
                 Assertions.assertEquals(0, expectedResult.getRecordMetadata().partition());
@@ -101,7 +91,7 @@ class KafkaListenerTest {
     }
 
     @Test
-    void should_Success_When_SendCorrectEmailToKafkaAndConsumeIt() throws ExecutionException, InterruptedException {
+    void should_Success_When_SendCorrectEmailToKafkaAndConsumeIt() {
         EmailModel emailModel = new EmailModel();
         String domain = "gmail";
         emailModel.setSender("Tester@" + domain + ".com");

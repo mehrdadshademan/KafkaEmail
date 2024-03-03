@@ -23,6 +23,6 @@ public class EmailProducer {
      */
     public void sendEmail(EmailModel email) {
         log.debug("send to kafka, topic:{}, data:{}", topic, email); //for security reason we should not log the data but this project is sample
-        kafkaTemplate.send(topic,"gmail", email);
+        kafkaTemplate.send(topic, email);
     }
 }

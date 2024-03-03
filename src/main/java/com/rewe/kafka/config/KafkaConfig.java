@@ -42,7 +42,7 @@ public class KafkaConfig {
 
 
     @Bean
-    public NewTopic celciusTopic() {
+    public NewTopic createPartition() {
         return TopicBuilder.name(topic)
                 .partitions(partition)
                 .build();

@@ -39,7 +39,7 @@ The EmailProducer class is responsible for sending messages to Kafka. This class
 
 
 **What does the consumer (Email Listener) do?**
-In this instance, we have kept the system uncomplicated, so we have not implemented a Dead-Letter Queue (DLQ) for our messages. After consuming the message, the method utilizes asynchronous processing to store data in the database. This asynchronous approach enables non-blocking execution of our message consumption. Although Kafka Connect could be an alternative for this purpose, we have opted for a simpler approach given the straightforward nature of our project.
+In this instance, we have kept the system uncomplicated, so we have not implemented a Dead-Letter Queue (DLQ) for our messages. After consuming the message, the method processing to store data in the database. Although Kafka Connect could be an alternative for this purpose, we have opted for a simpler approach given the straightforward nature of our project.
 
 What is the DLQ: 
 =============
@@ -57,5 +57,5 @@ In this project, ExceptionHandlerApi is employed for exception handling. I defin
 How can we test : 
 ===============
 In the test, I utilize EmbeddedKafka with configurations specified within the test itself. Consequently, there is no need to run Docker separately on our machine. By simply executing the tests, these unit tests assess whether the partitioner is functioning correctly, verify the methods supporting the endpoints, and confirm if Kafka consumption is accurate.
-moreover you can use this command line in terminal : mvn test
+moreover you can use this command line in terminal : **mvn test -Dfail-fast**
 
